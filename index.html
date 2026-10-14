@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#10152e">
+<meta name="description" content="Sky Hopper Pixel — a pixel-art flying arcade game with unlockable birds, coins, and increasing difficulty.">
+<title>Sky Hopper Pixel</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+:root{--bg:#10152e;--panel:#1d2547;--line:#45568b;--cream:#fff1b8;--yellow:#ffdb58;--pink:#ff6f91;--mint:#72f1b8;--blue:#72d9ff}
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--bg)}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#26396b 0%,#10152e 65%);color:var(--cream);font-family:'Press Start 2P',monospace;font-size:10px;display:flex;justify-content:center;align-items:center;padding:18px;image-rendering:pixelated}
+button{font:inherit;color:inherit;border:3px solid #fff1b8;background:#303e70;padding:14px 12px;cursor:pointer;box-shadow:4px 4px 0 #080b1b;line-height:1.6;touch-action:manipulation}
+button:hover{background:#42569a;transform:translate(-1px,-1px)}button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #080b1b}button:focus-visible{outline:3px solid var(--blue);outline-offset:4px}
+button.primary{background:var(--yellow);color:#27203c;border-color:#fff4bb}button.primary:hover{background:#ffe88c}
+button.small{padding:9px 10px;font-size:8px}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.app{width:min(100%,510px)}
+.header{text-align:center;margin-bottom:14px}
+.logo{font-size:clamp(20px,5vw,30px);line-height:1.6;letter-spacing:-2px;margin:0;color:var(--yellow);text-shadow:4px 4px 0 #8d4f9e}
+.logo span{color:var(--pink)}
+.tagline{color:#a8b8ee;font-size:8px;line-height:1.8;margin:6px 0 0}
+.gamebox{position:relative;border:4px solid #fff1b8;box-shadow:8px 8px 0 #080b1b;background:#171f42;overflow:hidden}
+canvas{display:block;width:100%;height:auto;aspect-ratio:420/600;image-rendering:pixelated;touch-action:pan-y}
+.hud{position:absolute;left:10px;right:10px;top:10px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;pointer-events:none}
+.hud .chip{background:#10152edc;border:2px solid #6578b2;padding:9px 8px;line-height:1.8;font-size:8px}
+.hud .chip b{color:var(--yellow);font-size:12px}
+.hud button{pointer-events:auto}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:15px;background:#080b1bbf}
+.overlay[hidden]{display:none}
+.panel{width:min(100%,360px);max-height:100%;overflow:auto;background:var(--panel);border:4px solid var(--cream);box-shadow:7px 7px 0 #080b1b;padding:20px;text-align:center}
+.panel h2{font-size:15px;line-height:1.8;color:var(--yellow);margin:5px 0 12px}
+.panel p{font-size:8px;line-height:2;color:#c5d0fa;margin:8px 0 17px}
+.pixel-bird{font-size:34px;margin:3px 0 12px;filter:drop-shadow(4px 4px 0 #080b1b)}
+.btnrow{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:15px}
+.stat{background:#1b2344;border:2px solid #45568b;text-align:center;padding:11px 5px;line-height:1.8}
+.stat small{display:block;color:#a8b8ee;font-size:7px}.stat strong{display:block;color:var(--yellow);font-size:11px;margin-top:4px}
+.controls{display:flex;gap:8px;margin-top:12px}
+.controls button{flex:1;min-height:48px}
+.hint{text-align:center;color:#9aabd9;font-size:7px;line-height:2.1;margin:13px 0 0}
+.screen{display:none}.screen.active{display:block}
+.skin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;text-align:left;margin:14px 0}
+.skin{padding:10px 8px;background:#151b36;border:2px solid #45568b;box-shadow:none;min-width:0}
+.skin.selected{border-color:var(--yellow);background:#343052}
+.skin .skinemoji{display:block;font-size:24px;margin-bottom:9px}.skin .skinname{display:block;font-size:8px;line-height:1.8}.skin .skinprice{display:block;font-size:7px;color:#a8b8ee;line-height:1.8;margin-top:5px}
+.field{width:100%;font:inherit;font-size:9px;background:#10152e;border:2px solid #6578b2;color:var(--cream);padding:12px;margin:5px 0 10px}
+.ranklist{padding:0;margin:12px 0;list-style:none;text-align:left;line-height:2.2;color:#dce3ff}
+.ranklist li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #45568b;padding:4px 0;font-size:8px}
+.status{min-height:22px;color:var(--mint);font-size:7px;line-height:1.8;margin:8px 0}
+@media(max-width:390px){body{padding:10px}.panel{padding:14px}.panel h2{font-size:12px}.logo{font-size:22px}.hud .chip{font-size:7px;padding:7px}.stats{gap:5px}.stat{padding:8px 3px}}
+@media(hover:none){button{min-height:44px}}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="header">
+    <h1 class="logo">SKY <span>HOPPER</span></h1>
+    <p class="tagline">PIXEL ARCADE // FLY FOREVER</p>
+  </header>
+
+  <section class="gamebox" aria-label="Sky Hopper Pixel game">
+    <canvas id="game" width="420" height="600" aria-label="Tap or press Space to fly"></canvas>
+    <div class="hud">
+      <div class="chip">SCORE<br><b id="scoreHud">0</b></div>
+      <div class="chip">COINS<br><b id="coinHud">0</b></div>
+      <button id="pauseBtn" class="small" hidden aria-label="Pause game">Ⅱ PAUSE</button>
+    </div>
+    <div class="overlay" id="overlay">
+      <div class="panel">
+        <div class="pixel-bird" id="panelBird">🐤</div>
+        <h2 id="panelTitle">SKY HOPPER</h2>
+        <p id="panelText">A tiny bird. A huge sky.<br>How long can you survive?</p>
+        <div class="btnrow"><button id="mainPlay" class="primary">▶ PLAY</button><button id="shopOpen">★ BIRDS</button></div>
+        <div class="btnrow"><button id="leaderOpen">♛ LEADERBOARD</button><button id="soundToggle">♫ SOUND: ON</button></div>
+        <div class="status" id="panelStatus">Tap, click, or press SPACE to flap.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="stats">
+    <div class="stat"><small>BEST SCORE</small><strong id="bestScore">0</strong></div>
+    <div class="stat"><small>YOUR COINS</small><strong id="wallet">0</strong></div>
+    <div class="stat"><small>DIFFICULTY</small><strong id="difficulty">EASY</strong></div>
+  </div>
+  <div class="controls">
+    <button id="flapBtn" class="primary">▲ FLAP</button>
+    <button id="restartBtn">↻ RESTART</button>
+  </div>
+  <p class="hint">SPACE / ↑ = FLAP &nbsp; • &nbsp; P = PAUSE<br>Touch-friendly controls · Your unlocks save on this device</p>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const canvas = $('game'), ctx = canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height,GROUND=70;
+  const overlay=$('overlay'), pauseBtn=$('pauseBtn');
+  const STORAGE='skyHopperPixelSave_v1';
+  const birds=[
+    {id:'chick',name:'CLASSIC',emoji:'🐤',price:0,color:'#ffdb58',wing:'#f5a94b'},
+    {id:'berry',name:'BERRY',emoji:'🐦',price:25,color:'#ff6f91',wing:'#d94d78'},
+    {id:'mint',name:'MINT',emoji:'🐤',price:45,color:'#72f1b8',wing:'#34b98a'},
+    {id:'cosmic',name:'COSMIC',emoji:'🐦',price:75,color:'#bd9cff',wing:'#8b65db'},
+    {id:'ember',name:'EMBER',emoji:'🐤',price:110,color:'#ff985e',wing:'#e45d43'},
+    {id:'gold',name:'GOLD',emoji:'🐦',price:160,color:'#ffe88a',wing:'#d9a928'}
+  ];
+  function loadSave(){
+    try{
+      const d=JSON.parse(localStorage.getItem(STORAGE)||'{}');
+      return {best:Number(d.best)||0,coins:Number(d.coins)||0,owned:Array.isArray(d.owned)?[...new Set(['chick',...d.owned])]:['chick'],selected:birds.some(b=>b.id===d.selected)?d.selected:'chick',sound:d.sound!==false,name:typeof d.name==='string'?d.name.slice(0,16):'PLAYER'};
+    }catch{return {best:0,coins:0,owned:['chick'],selected:'chick',sound:true,name:'PLAYER'};}
+  }
+  let save=loadSave();
+  function persist(){try{localStorage.setItem(STORAGE,JSON.stringify(save));}catch{} updateStats();}
+  let state='menu',bird,pipes,score,runCoins,frame,lastTime=0,anim=0,particles=[],clouds=[];
+  let audioCtx=null,musicTimer=null,musicStep=0;
+  function selectedBird(){return birds.find(b=>b.id===save.selected)||birds[0];}
+  function updateStats(){
+    $('bestScore').textContent=save.best;$('wallet').textContent=save.coins;
+    $('coinHud').textContent=runCoins||0;$('scoreHud').textContent=score||0;
+    $('difficulty').textContent=score>=25?'INSANE':score>=15?'HARD':score>=7?'MEDIUM':'EASY';
+    $('soundToggle').textContent='♫ SOUND: '+(save.sound?'ON':'OFF');
+    $('panelBird').textContent=selectedBird().emoji;
+  }
+  function audio(){
+    if(!save.sound)return null;
+    try{if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();return audioCtx;}catch{return null;}
+  }
+  function tone(freq,duration=.08,type='square',volume=.035,delay=0){
+    const a=audio();if(!a)return;
+    const osc=a.createOscillator(),gain=a.createGain();
+    osc.type=type;osc.frequency.setValueAtTime(freq,a.currentTime+delay);
+    gain.gain.setValueAtTime(volume,a.currentTime+delay);gain.gain.exponentialRampToValueAtTime(.001,a.currentTime+delay+duration);
+    osc.connect(gain);gain.connect(a.destination);osc.start(a.currentTime+delay);osc.stop(a.currentTime+delay+duration+.02);
+  }
+  function sfx(kind){
+    if(kind==='flap'){tone(480,.06,'square',.025);tone(720,.05,'square',.018,.035);}
+    if(kind==='coin'){tone(880,.07,'square',.035);tone(1175,.1,'square',.025,.07);}
+    if(kind==='score'){tone(660,.08);tone(880,.1,'square',.025,.07);}
+    if(kind==='hit'){tone(180,.18,'sawtooth',.035);tone(95,.25,'square',.025,.12);}
+    if(kind==='buy'){tone(523,.07);tone(659,.07,'square',.025,.08);tone(784,.13,'square',.025,.16);}
+  }
+  function startMusic(){
+    stopMusic();if(!save.sound)return;
+    musicStep=0;musicTimer=setInterval(()=>{
+      if(state!=='playing'||!save.sound)return;
+      const notes=[392,0,523,0,587,523,392,0,330,0,392,0,294,330,392,0];
+      const n=notes[musicStep++%notes.length];if(n)tone(n,.095,'square',.009);
+    },180);
+  }
+  function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null;}}
+  function setOverlay(title,text,buttons,status=''){
+    $('panelTitle').textContent=title;$('panelText').innerHTML=text;
+    $('panelStatus').textContent=status;overlay.hidden=false;
+  }
+  function resetRun(){
+    bird={x:104,y:265,vy:0,r:13,tilt:0};
+    pipes=[];particles=[];score=0;runCoins=0;frame=0;addPipe(W+25);updateStats();
+  }
+  function addPipe(x){
+    const gap=Math.max(118,158-Math.floor(score/5)*6);
+    const min=65,max=H-GROUND-65-gap;
+    const gapY=min+Math.random()*Math.max(1,max-min);
+    pipes.push({x,w:68,gapY,gap,passed:false,coinTaken:false,coinX:x+34,coinY:gapY+gap/2});
+  }
+  function begin(){
+    resetRun();state='playing';overlay.hidden=true;pauseBtn.hidden=false;bird.vy=-6.1;
+    lastTime=performance.now();startMusic();cancelAnimationFrame(anim);anim=requestAnimationFrame(loop);
+  }
+  function flap(){
+    if(state==='menu'||state==='over'){begin();return;}
+    if(state==='paused')return;
+    if(state==='playing'){bird.vy=-6.05;sfx('flap');}
+  }
+  function pause(){
+    if(state==='playing'){state='paused';stopMusic();pauseBtn.textContent='▶ RESUME';setOverlay('PAUSED','Take a breath, pixel pilot.','', 'Press P or tap resume to continue.');$('panelText').textContent='Take a breath, pixel pilot.';$('mainPlay').textContent='▶ RESUME';pauseBtn.textContent='▶ RESUME';}
+    else if(state==='paused'){state='playing';overlay.hidden=true;$('mainPlay').textContent='▶ PLAY';pauseBtn.textContent='Ⅱ PAUSE';lastTime=performance.now();startMusic();anim=requestAnimationFrame(loop);}
+  }
+  function gameOver(){
+    if(state!=='playing')return;
+    state='over';stopMusic();sfx('hit');pauseBtn.hidden=true;
+    save.coins+=runCoins;
+    if(score>save.best)save.best=score;
+    persist();
+    $('mainPlay').textContent='↻ PLAY AGAIN';
+    setOverlay('GAME OVER',`SCORE: ${score}<br>COINS FOUND: ${runCoins}<br>BEST: ${save.best}`,'','Coins added to your wallet!');
+    $('panelText').innerHTML=`SCORE: ${score}<br>COINS FOUND: ${runCoins}<br>BEST: ${save.best}`;
+    draw();
+  }
+  function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));}
+  function drawBackground(){
+    rect(0,0,W,H,'#19244b');
+    // Pixel stars
+    for(let i=0;i<48;i++){const x=(i*83+19)%W,y=(i*47+13)%390;rect(x,y,((i%3)===0?3:2),2,i%4===0?'#ffdb58':'#6379b5');}
+    // Blocky moon
+    rect(310,70,40,8,'#f7e8b1');rect(302,78,56,30,'#f7e8b1');rect(310,108,40,8,'#f7e8b1');rect(318,78,24,30,'#fff5d0');
+    // pixel clouds
+    for(let i=0;i<4;i++){
+      const speed=state==='playing'?frame*.28:0;
+      const x=((i*142-speed+W+100)%(W+100))-65,y=120+(i%3)*74;
+      rect(x,y+8,50,13,'#364d82');rect(x+9,y,26,9,'#364d82');rect(x+5,y+5,40,10,'#49649c');
+    }
+    // distant blocky city
+    rect(0,445,W,85,'#222f5d');
+    for(let i=0;i<12;i++){const x=i*39;const bh=25+(i*17%45);rect(x,445-bh,28,bh,'#2e4076');for(let wy=455-bh;wy<435;wy+=13)for(let wx=x+6;wx<x+25;wx+=11)rect(wx,wy,4,5,'#6377ac');}
+  }
+  function drawPipe(p){
+    const bottom=p.gapY+p.gap;
+    rect(p.x+4,0,p.w-8,p.gapY-13,'#287c69');rect(p.x+4,bottom+13,p.w-8,H-GROUND-bottom,'#287c69');
+    rect(p.x+10,0,8,p.gapY-13,'#56c69a');rect(p.x+10,bottom+13,8,H-GROUND-bottom,'#56c69a');
+    rect(p.x,p.gapY-19,p.w,19,'#4ce0a2');rect(p.x+5,p.gapY-14,p.w-10,5,'#9affce');
+    rect(p.x,bottom,p.w,19,'#4ce0a2');rect(p.x+5,bottom+5,p.w-10,5,'#9affce');
+    rect(p.x+p.w-10,0,6,p.gapY-19,'#1b5d59');rect(p.x+p.w-10,bottom+19,6,H-GROUND-bottom-19,'#1b5d59');
+    if(!p.coinTaken){
+      const cx=p.coinX,cy=p.coinY;
+      rect(cx-7,cy-10,14,20,'#fff0a0');rect(cx-10,cy-6,20,12,'#ffdb58');rect(cx-4,cy-6,8,12,'#d58d39');rect(cx-2,cy-4,4,8,'#fff0a0');
+    }
+  }
+  function drawGround(){
+    rect(0,H-GROUND,W,GROUND,'#42335e');rect(0,H-GROUND,W,12,'#72f1b8');rect(0,H-GROUND+12,W,5,'#39ae8d');
+    for(let x=-((frame*2)%24);x<W;x+=24){rect(x,H-GROUND+22,12,8,'#65517c');rect(x+12,H-GROUND+38,12,8,'#65517c');}
+  }
+  function drawBird(){
+    const b=selectedBird(),x=Math.round(bird.x),y=Math.round(bird.y);
+    ctx.save();ctx.translate(x,y);ctx.rotate(state==='playing'?Math.max(-.4,Math.min(.8,bird.vy*.065)):Math.sin(performance.now()/300)*.04);
+    rect(-13,-8,24,19,b.color);rect(-9,-13,15,6,b.color);rect(-10,10,13,4,b.color);
+    rect(-8,3,12,6,b.wing);rect(-11,5,8,4,'#fff1b8');
+    rect(8,-4,10,7,'#ff9c57');rect(12,-2,7,4,'#ffe0a1');
+    rect(3,-9,7,7,'#fff8dc');rect(6,-7,3,4,'#10152e');
+    rect(-13,12,7,4,'#ff9c57');rect(-3,12,7,4,'#ff9c57');
+    ctx.restore();
+  }
+  function draw(){
+    drawBackground();pipes.forEach(drawPipe);drawGround();
+    particles.forEach(p=>rect(p.x,p.y,p.size,p.size,p.color));
+    if(bird)drawBird();
+    if(state==='playing'){
+      ctx.fillStyle='#fff1b8';ctx.font='16px "Press Start 2P",monospace';ctx.textAlign='center';ctx.fillText(String(score),W/2,62);
+    }
+  }
+  function burst(x,y,color){
+    for(let i=0;i<8;i++)particles.push({x,y,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,size:3+Math.random()*3,color,life:30});
+  }
+  function update(dt){
+    if(state!=='playing')return;
+    const step=dt/16.667;frame+=step;
+    const speed=Math.min(4.8,2.55+score*.055);
+    const gravity=Math.min(.48,.32+score*.003);
+    bird.vy+=gravity*step;bird.y+=bird.vy*step;
+    pipes.forEach(p=>{
+      p.x-=speed*step;p.coinX=p.x+p.w/2;
+      if(!p.passed&&p.x+p.w<bird.x){p.passed=true;score++;sfx('score');}
+      if(!p.coinTaken){
+        const dx=bird.x-p.coinX,dy=bird.y-p.coinY;
+        if(Math.abs(dx)<20&&Math.abs(dy)<22){p.coinTaken=true;runCoins++;sfx('coin');burst(p.coinX,p.coinY,'#ffdb58');}
+      }
+    });
+    if(pipes.length&&pipes[pipes.length-1].x<W-205)addPipe(W+10);
+    pipes=pipes.filter(p=>p.x+p.w>-5);
+    particles=particles.filter(p=>p.life-->0);
+    particles.forEach(p=>{p.x+=p.vx*step;p.y+=p.vy*step;});
+    $('scoreHud').textContent=score;$('coinHud').textContent=runCoins;
+    $('difficulty').textContent=score>=25?'INSANE':score>=15?'HARD':score>=7?'MEDIUM':'EASY';
+    const left=bird.x-10,right=bird.x+10,top=bird.y-10,bottom=bird.y+10;
+    if(top<0||bottom>H-GROUND){gameOver();return;}
+    for(const p of pipes){
+      if(right>p.x&&left<p.x+p.w&&(top<p.gapY||bottom>p.gapY+p.gap)){gameOver();return;}
+    }
+  }
+  function loop(now){
+    const dt=Math.min(34,now-lastTime||16.667);lastTime=now;update(dt);draw();
+    if(state==='playing')anim=requestAnimationFrame(loop);
+  }
+
+  // Screens
+  function showMenu(){
+    state='menu';stopMusic();pauseBtn.hidden=true;$('mainPlay').textContent='▶ PLAY';
+    setOverlay('SKY HOPPER','A tiny bird. A huge sky.<br>How long can you survive?','','Tap, click, or press SPACE to flap.');
+    updateStats();draw();
+  }
+  function showShop(){
+    stateBeforeShop=state;state='shop';stopMusic();pauseBtn.hidden=true;
+    $('panelTitle').textContent='BIRD GARAGE';$('panelText').innerHTML=`WALLET: <span style="color:#ffdb58">${save.coins} COINS</span><br>Choose your pixel pal.`;$('panelStatus').textContent='Select an owned bird or buy a new one.';
+    $('mainPlay').textContent='← BACK';$('shopOpen').textContent='★ BIRDS';renderShop();overlay.hidden=false;
+  }
+  let stateBeforeShop='menu';
+  function renderShop(){
+    const panel=document.querySelector('.panel');
+    let grid=document.getElementById('skinGrid');
+    if(!grid){grid=document.createElement('div');grid.id='skinGrid';grid.className='skin-grid';$('panelText').after(grid);}
+    grid.innerHTML='';
+    birds.forEach(b=>{
+      const owned=save.owned.includes(b.id),selected=save.selected===b.id;
+      const btn=document.createElement('button');btn.className='skin'+(selected?' selected':'');
+      btn.innerHTML=`<span class="skinemoji">${b.emoji}</span><span class="skinname">${b.name}</span><span class="skinprice">${selected?'✓ EQUIPPED':owned?'OWNED':`🪙 ${b.price}`}</span>`;
+      btn.addEventListener('click',()=>{
+        if(owned){save.selected=b.id;persist();sfx('buy');renderShop();}
+        else if(save.coins>=b.price){save.coins-=b.price;save.owned.push(b.id);save.selected=b.id;persist();sfx('buy');$('panelText').innerHTML=`WALLET: <span style="color:#ffdb58">${save.coins} COINS</span><br>Nice choice!`;renderShop();}
+        else{$('panelStatus').textContent=`Need ${b.price-save.coins} more coins to unlock ${b.name}.`;}
+      });
+      grid.appendChild(btn);
+    });
+  }
+  function hideShop(){
+    const grid=$('skinGrid');if(grid)grid.remove();
+    if(stateBeforeShop==='paused'){state='paused';pauseBtn.hidden=false;pauseBtn.textContent='▶ RESUME';setOverlay('PAUSED','Take a breath, pixel pilot.','','Press P or tap resume to continue.');$('mainPlay').textContent='▶ RESUME';}
+    else if(stateBeforeShop==='playing'){state='playing';overlay.hidden=true;pauseBtn.hidden=false;pauseBtn.textContent='Ⅱ PAUSE';lastTime=performance.now();startMusic();anim=requestAnimationFrame(loop);}
+    else showMenu();
+    updateStats();draw();
+  }
+  $('mainPlay').addEventListener('click',()=>{
+    if(state==='shop' || state==='leader'){const list=$('rankList');if(list)list.remove();hideShop();return;}
+    if(state==='paused'){pause();return;}
+    begin();
+  });
+  $('shopOpen').addEventListener('click',()=>showShop());
+  $('leaderOpen').addEventListener('click',()=>showLeaderboard());
+  $('soundToggle').addEventListener('click',()=>{
+    save.sound=!save.sound;persist();
+    if(save.sound){audio();startMusic();tone(600,.08);}else stopMusic();
+    updateStats();
+  });
+  pauseBtn.addEventListener('click',()=>pause());
+  $('flapBtn').addEventListener('pointerdown',e=>{e.preventDefault();flap();});
+  $('restartBtn').addEventListener('click',()=>begin());
+  canvas.addEventListener('pointerdown',e=>{e.preventDefault();flap();},{passive:false});
+  document.addEventListener('keydown',e=>{
+    if(['Space','ArrowUp'].includes(e.code)){e.preventDefault();if(!e.repeat)flap();}
+    if(e.code==='KeyP'){if(state==='playing'||state==='paused')pause();}
+    if(e.code==='Escape'&&state==='shop')hideShop();
+  });
+
+  // Leaderboard: local scores work offline. Online mode needs a configured Supabase project.
+  const ONLINE_CONFIG={url:'',anonKey:''}; // Fill these in after creating your own Supabase project.
+  async function apiRequest(path,options={}){
+    if(!ONLINE_CONFIG.url||!ONLINE_CONFIG.anonKey)throw new Error('Online leaderboard is not configured yet.');
+    const res=await fetch(ONLINE_CONFIG.url.replace(/\/$/,'')+path,{...options,headers:{apikey:ONLINE_CONFIG.anonKey,Authorization:'Bearer '+ONLINE_CONFIG.anonKey,'Content-Type':'application/json',...(options.headers||{})}});
+    if(!res.ok)throw new Error('Leaderboard request failed ('+res.status+'). Check your Supabase setup.');
+    return res.status===204?null:res.json();
+  }
+  async function submitOnline(name,points){
+    return apiRequest('/rest/v1/scores',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({player_name:name,score:points})});
+  }
+  async function fetchOnline(){
+    return apiRequest('/rest/v1/scores?select=player_name,score&order=score.desc&limit=10');
+  }
+  function showLeaderboard(){
+    stateBeforeShop=state;state='leader';stopMusic();pauseBtn.hidden=true;
+    $('panelTitle').textContent='HIGH SCORES';
+    $('panelText').textContent='Local best is saved on this device. Online scores need setup.';
+    $('panelStatus').textContent='Loading leaderboard…';$('mainPlay').textContent='← BACK';
+    let list=$('rankList');if(!list){list=document.createElement('ol');list.id='rankList';list.className='ranklist';$('panelText').after(list);}
+    list.innerHTML=`<li><span>THIS DEVICE</span><b>${save.best}</b></li>`;
+    overlay.hidden=false;
+    if(ONLINE_CONFIG.url&&ONLINE_CONFIG.anonKey){
+      fetchOnline().then(rows=>{
+        list.innerHTML=`<li><span>THIS DEVICE</span><b>${save.best}</b></li>`+rows.map((r,i)=>`<li><span>${i+1}. ${escapeHtml(r.player_name)}</span><b>${Number(r.score)||0}</b></li>`).join('');
+        $('panelStatus').textContent='Online leaderboard loaded.';
+      }).catch(err=>$('panelStatus').textContent=err.message);
+    }else $('panelStatus').textContent='Online leaderboard not configured. See setup instructions below.';
+  }
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  // Add a submit form only after a run, and only when online config is present.
+  const originalGameOver=gameOver;
+  // Online score submission can also be triggered from the game-over panel when configured.
+  const submitBtn=document.createElement('button');submitBtn.id='submitScore';submitBtn.className='small';submitBtn.textContent='☁ SUBMIT SCORE';submitBtn.hidden=true;
+  document.querySelector('.panel .btnrow').appendChild(submitBtn);
+  const nameInput=document.createElement('input');nameInput.className='field';nameInput.maxLength=16;nameInput.placeholder='YOUR NAME';nameInput.setAttribute('aria-label','Your leaderboard name');nameInput.value=save.name;nameInput.hidden=true;
+  $('panelText').after(nameInput);
+  function updateSubmitVisibility(){submitBtn.hidden=!(state==='over'&&ONLINE_CONFIG.url&&ONLINE_CONFIG.anonKey);nameInput.hidden=submitBtn.hidden;}
+  submitBtn.addEventListener('click',async()=>{
+    const name=(nameInput.value.trim()||'PLAYER').slice(0,16);
+    try{await submitOnline(name,score);save.name=name;persist();$('panelStatus').textContent='Score submitted to the online leaderboard!';}
+    catch(e){$('panelStatus').textContent=e.message;}
+  });
+  // Wrap gameOver so submit controls refresh after state changes.
+  const gameOverBase=gameOver;
+  gameOver=function(){gameOverBase();updateSubmitVisibility();};
+  // Wrap overlay-changing buttons to ensure controls are hidden outside game over.
+  const oldShowMenu=showMenu;
+  showMenu=function(){oldShowMenu();updateSubmitVisibility();};
+  const originalBegin=begin;
+  begin=function(){originalBegin();updateSubmitVisibility();};
+
+  // Prevent game actions while typing into the name field.
+  nameInput.addEventListener('keydown',e=>e.stopPropagation());
+
+  resetRun();showMenu();
+})();
+</script>
+</body>
+</html>
